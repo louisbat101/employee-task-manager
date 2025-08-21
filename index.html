@@ -1,0 +1,570 @@
+﻿<!DOCTYPE html>
+<html lang='en'>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-wi        <header>
+            <h1>📋 Task Manager</h1>
+            <p class='subtitle'>Track and manage work assignments</p>
+            <div style='margin-top: 15px;'>
+                <button onclick='showShareOptions()' class='btn' style='background: rgba(255,255,255,0.2); font-size: 14px; padding: 8px 16px;'>
+                    📤 Share App
+                </button>
+            </div>
+        </header> initial-scale=1.0'>
+    <title>Employee Task Manager</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f5f7fa; color: #333; line-height: 1.6; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 15px; }
+        header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px 15px; border-radius: 10px; margin-bottom: 20px; text-align: center; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
+        h1 { font-size: 2rem; margin-bottom: 10px; }
+        .subtitle { font-size: 1rem; opacity: 0.9; }
+        .add-task-section { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); margin-bottom: 20px; }
+        .add-task-form { display: grid; grid-template-columns: 1fr; gap: 15px; }
+        .form-group { display: flex; flex-direction: column; }
+        label { font-weight: 600; margin-bottom: 8px; color: #555; font-size: 14px; }
+        input[type='text'], select { padding: 14px; border: 2px solid #e1e8ed; border-radius: 8px; font-size: 16px; transition: border-color 0.3s ease; -webkit-appearance: none; }
+        input[type='text']:focus, select:focus { outline: none; border-color: #667eea; }
+        .btn { padding: 16px 24px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: 600; transition: transform 0.2s ease, box-shadow 0.2s ease; margin-top: 10px; min-height: 48px; }
+        .btn:hover, .btn:active { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4); }
+        .filters { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); margin-bottom: 20px; }
+        .filter-group { display: flex; flex-direction: column; margin-bottom: 15px; }
+        .filter-group:last-child { margin-bottom: 0; }
+        .filter-group label { margin-bottom: 8px; font-size: 14px; }
+        .tasks-container { display: grid; gap: 15px; }
+        .task-card { background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); padding: 20px; transition: transform 0.2s ease, box-shadow 0.2s ease; border-left: 4px solid; }
+        .task-card:hover, .task-card:active { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15); }
+        .task-card.not-started { border-left-color: #ff6b6b; }
+        .task-card.started { border-left-color: #feca57; }
+        .task-card.done { border-left-color: #48cab2; }
+        .task-header { display: flex; flex-direction: column; gap: 15px; }
+        .task-info { flex: 1; }
+        .task-title { font-size: 1.1rem; font-weight: 600; margin-bottom: 8px; color: #333; }
+        .task-employee { color: #666; font-size: 0.9rem; margin-bottom: 10px; }
+        .task-description { color: #555; line-height: 1.5; margin-bottom: 15px; }
+        .task-status { display: flex; flex-direction: column; gap: 12px; }
+        .status-select { padding: 12px; border: 2px solid #e1e8ed; border-radius: 8px; font-size: 16px; background: white; cursor: pointer; min-height: 48px; }
+        .status-not-started { background-color: #ffe0e0; color: #d63031; }
+        .status-started { background-color: #fff4e0; color: #e17055; }
+        .status-done { background-color: #e0f7f4; color: #00b894; }
+        .task-actions { display: flex; gap: 10px; justify-content: flex-end; }
+        .btn-small { padding: 12px 16px; font-size: 14px; border-radius: 6px; border: none; cursor: pointer; transition: background-color 0.2s ease; min-height: 44px; }
+        .btn-delete { background-color: #ff6b6b; color: white; }
+        .btn-delete:hover, .btn-delete:active { background-color: #ee5a52; }
+        .stats { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); margin-bottom: 20px; display: grid; grid-template-columns: 1fr; gap: 15px; }
+        .stat-item { text-align: center; padding: 20px; border-radius: 8px; }
+        .stat-item.not-started { background-color: #ffe0e0; }
+        .stat-item.started { background-color: #fff4e0; }
+        .stat-item.done { background-color: #e0f7f4; }
+        .stat-number { font-size: 2.5rem; font-weight: bold; margin-bottom: 8px; }
+        .stat-label { font-size: 1rem; color: #666; }
+        .empty-state { text-align: center; padding: 40px 20px; color: #666; }
+        .employee-tag { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 20px; padding: 12px 16px; display: flex; align-items: center; gap: 10px; font-size: 14px; margin-bottom: 10px; }
+        .employee-tag .delete-btn { background: #dc3545; color: white; border: none; border-radius: 50%; width: 28px; height: 28px; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .employee-tag .delete-btn:hover, .employee-tag .delete-btn:active { background: #c82333; }
+        .employee-list-container { display: flex; flex-direction: column; gap: 10px; }
+        .mobile-menu { display: none; position: fixed; top: 0; left: 0; right: 0; background: white; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .mobile-menu-toggle { display: none; }
+        
+        /* Tablet styles */
+        @media (min-width: 768px) {
+            .container { padding: 20px; }
+            h1 { font-size: 2.5rem; }
+            .add-task-form { grid-template-columns: 1fr 1fr; }
+            .stats { grid-template-columns: repeat(3, 1fr); }
+            .task-header { flex-direction: row; align-items: flex-start; }
+            .task-status { min-width: 200px; }
+            .filters { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
+            .filter-group { flex-direction: row; align-items: center; gap: 10px; margin-bottom: 0; }
+            .filter-group label { margin-bottom: 0; }
+        }
+        
+        /* Desktop styles */
+        @media (min-width: 1024px) {
+            .add-task-form { grid-template-columns: 2fr 1fr 1fr auto; align-items: end; }
+            .btn { margin-top: 0; }
+            .filters { flex-wrap: nowrap; }
+            .employee-list-container { display: flex; flex-direction: row; flex-wrap: wrap; gap: 10px; }
+            .employee-tag { margin-bottom: 0; }
+        }
+        
+        /* Touch-friendly improvements */
+        @media (hover: none) and (pointer: coarse) {
+            .btn, .btn-small, .status-select, input, select {
+                min-height: 48px;
+            }
+            .task-card {
+                padding: 25px;
+            }
+            .employee-tag .delete-btn {
+                width: 32px;
+                height: 32px;
+                font-size: 16px;
+            }
+        }
+        
+        /* High DPI displays */
+        @media (-webkit-min-device-pixel-ratio: 2) {
+            .task-card {
+                box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
+            }
+        }
+        
+        /* Dark mode support */
+        @media (prefers-color-scheme: dark) {
+            body { background-color: #1a1a1a; color: #fff; }
+            .add-task-section, .stats, .filters, .task-card { background: #2d2d2d; }
+            input, select { background: #2d2d2d; color: #fff; border-color: #444; }
+            .task-title { color: #fff; }
+            .task-employee, .task-description { color: #ccc; }
+            .employee-tag { background: #3d3d3d; border-color: #555; color: #fff; }
+        }
+    </style>
+</head>
+<body>
+    <div class='container'>
+        <header>
+            <h1> Task Manager</h1>
+            <p class='subtitle'>Track and manage work assignments</p>
+        </header>
+        
+        <div class='stats'>
+            <div class='stat-item not-started'>
+                <div class='stat-number' id='notStartedCount'>0</div>
+                <div class='stat-label'> Not Started</div>
+            </div>
+            <div class='stat-item started'>
+                <div class='stat-number' id='startedCount'>0</div>
+                <div class='stat-label'> In Progress</div>
+            </div>
+            <div class='stat-item done'>
+                <div class='stat-number' id='doneCount'>0</div>
+                <div class='stat-label'> Completed</div>
+            </div>
+        </div>
+        
+        <div class='add-task-section'>
+            <h2 style='margin-bottom: 20px; color: #333; font-size: 1.2rem;'> Add New Task</h2>
+            <form class='add-task-form' id='addTaskForm'>
+                <div class='form-group'>
+                    <label for='taskTitle'>Task Description</label>
+                    <input type='text' id='taskTitle' name='taskTitle' required placeholder='What needs to be done?'>
+                </div>
+                <div class='form-group'>
+                    <label for='employeeName'>Assign To</label>
+                    <select id='employeeName' name='employeeName' required>
+                        <option value=''>Choose Employee</option>
+                    </select>
+                    <input type='text' id='customEmployee' name='customEmployee' placeholder='Enter custom name' style='display:none; margin-top: 10px;'>
+                </div>
+                <div class='form-group'>
+                    <label for='taskPriority'>Priority Level</label>
+                    <select id='taskPriority' name='taskPriority'>
+                        <option value='low'> Low</option>
+                        <option value='medium' selected> Medium</option>
+                        <option value='high'> High</option>
+                    </select>
+                </div>
+                <button type='submit' class='btn'>Add Task</button>
+            </form>
+        </div>
+        
+        <div class='add-task-section'>
+            <h2 style='margin-bottom: 20px; color: #333; font-size: 1.2rem;'> Manage Team</h2>
+            <div style='display: flex; flex-direction: column; gap: 15px; margin-bottom: 20px;'>
+                <div class='form-group'>
+                    <label for='newEmployeeName'>Add Team Member</label>
+                    <input type='text' id='newEmployeeName' placeholder='Enter team member name'>
+                </div>
+                <button type='button' class='btn' onclick='taskManager.addEmployee()'>Add Team Member</button>
+            </div>
+            <div class='employee-list'>
+                <h3 style='margin-bottom: 15px; color: #555; font-size: 1rem;'>Current Team Members:</h3>
+                <div id='employeeListContainer' class='employee-list-container'></div>
+            </div>
+        </div>
+        
+        <div class='filters'>
+            <div class='filter-group'>
+                <label for='statusFilter'>Filter by Status:</label>
+                <select id='statusFilter'>
+                    <option value='all'>All Tasks</option>
+                    <option value='not-started'> Not Started</option>
+                    <option value='started'> In Progress</option>
+                    <option value='done'> Completed</option>
+                </select>
+            </div>
+            <div class='filter-group'>
+                <label for='employeeFilter'>Filter by Team Member:</label>
+                <select id='employeeFilter'>
+                    <option value='all'>All Team Members</option>
+                </select>
+            </div>
+            <div class='filter-group'>
+                <label for='priorityFilter'>Filter by Priority:</label>
+                <select id='priorityFilter'>
+                    <option value='all'>All Priorities</option>
+                    <option value='high'> High</option>
+                    <option value='medium'> Medium</option>
+                    <option value='low'> Low</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class='tasks-container' id='tasksContainer'>
+            <div class='empty-state'>
+                <h3> No tasks yet</h3>
+                <p>Add your first task using the form above!</p>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        class TaskManager {
+            constructor() {
+                this.tasks = this.loadTasks();
+                this.employees = this.loadEmployees();
+                this.taskIdCounter = this.getNextTaskId();
+                this.init();
+            }
+            
+            init() {
+                this.bindEvents();
+                this.renderTasks();
+                this.updateStats();
+                this.updateEmployeeDropdown();
+                this.updateEmployeeFilter();
+                this.renderEmployeeList();
+                this.setupMobileOptimizations();
+            }
+            
+            setupMobileOptimizations() {
+                // Prevent zoom on input focus on iOS
+                if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+                    const inputs = document.querySelectorAll('input, select');
+                    inputs.forEach(input => {
+                        input.addEventListener('focus', () => {
+                            document.querySelector('meta[name=viewport]').setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
+                        });
+                        input.addEventListener('blur', () => {
+                            document.querySelector('meta[name=viewport]').setAttribute('content', 'width=device-width, initial-scale=1.0');
+                        });
+                    });
+                }
+                
+                // Add touch feedback
+                const touchElements = document.querySelectorAll('.btn, .btn-small, .task-card, .employee-tag .delete-btn');
+                touchElements.forEach(element => {
+                    element.addEventListener('touchstart', () => {
+                        element.style.opacity = '0.7';
+                    });
+                    element.addEventListener('touchend', () => {
+                        setTimeout(() => {
+                            element.style.opacity = '1';
+                        }, 150);
+                    });
+                });
+            }
+            
+            bindEvents() {
+                document.getElementById('addTaskForm').addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    this.addTask();
+                });
+                document.getElementById('statusFilter').addEventListener('change', () => this.renderTasks());
+                document.getElementById('employeeFilter').addEventListener('change', () => this.renderTasks());
+                document.getElementById('priorityFilter').addEventListener('change', () => this.renderTasks());
+                document.getElementById('employeeName').addEventListener('change', (e) => {
+                    const customInput = document.getElementById('customEmployee');
+                    if (e.target.value === 'Other') {
+                        customInput.style.display = 'block';
+                        customInput.required = true;
+                        customInput.focus();
+                    } else {
+                        customInput.style.display = 'none';
+                        customInput.required = false;
+                        customInput.value = '';
+                    }
+                });
+            }
+            
+            addTask() {
+                const form = document.getElementById('addTaskForm');
+                const formData = new FormData(form);
+                const employeeName = formData.get('employeeName') === 'Other' ? formData.get('customEmployee') : formData.get('employeeName');
+                
+                if (!employeeName) {
+                    alert('Please select or enter an employee name');
+                    return;
+                }
+                
+                const task = {
+                    id: this.taskIdCounter++,
+                    title: formData.get('taskTitle'),
+                    employee: employeeName,
+                    priority: formData.get('taskPriority'),
+                    status: 'not-started',
+                    createdAt: new Date().toISOString()
+                };
+                this.tasks.push(task);
+                this.saveTasks();
+                this.renderTasks();
+                this.updateStats();
+                this.updateEmployeeFilter();
+                form.reset();
+                
+                // Show success feedback
+                this.showToast('Task added successfully! ');
+            }
+            
+            showToast(message) {
+                const toast = document.createElement('div');
+                toast.style.cssText = 
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    background: #48cab2;
+                    color: white;
+                    padding: 12px 20px;
+                    border-radius: 8px;
+                    z-index: 2000;
+                    font-size: 14px;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+                ;
+                toast.textContent = message;
+                document.body.appendChild(toast);
+                setTimeout(() => {
+                    toast.remove();
+                }, 3000);
+            }
+            
+            addEmployee() {
+                const nameInput = document.getElementById('newEmployeeName');
+                const name = nameInput.value.trim();
+                if (name && !this.employees.includes(name)) {
+                    this.employees.push(name);
+                    this.saveEmployees();
+                    this.updateEmployeeDropdown();
+                    this.updateEmployeeFilter();
+                    this.renderEmployeeList();
+                    nameInput.value = '';
+                    this.showToast('Team member added! ');
+                } else if (this.employees.includes(name)) {
+                    alert('Team member already exists!');
+                } else {
+                    alert('Please enter a name');
+                }
+            }
+            
+            deleteEmployee(name) {
+                if (confirm('Remove ' + name + ' from team? This won\\'t affect existing tasks.')) {
+                    this.employees = this.employees.filter(emp => emp !== name);
+                    this.saveEmployees();
+                    this.updateEmployeeDropdown();
+                    this.updateEmployeeFilter();
+                    this.renderEmployeeList();
+                    this.showToast('Team member removed');
+                }
+            }
+            
+            renderEmployeeList() {
+                const container = document.getElementById('employeeListContainer');
+                if (this.employees.length === 0) {
+                    container.innerHTML = '<p style=\"color: #666; font-style: italic;\">No team members yet. Add some above!</p>';
+                    return;
+                }
+                container.innerHTML = this.employees.map(emp => 
+                    '<div class=\"employee-tag\">' +
+                    '<span>' + this.escapeHtml(emp) + '</span>' +
+                    '<button class=\"delete-btn\" onclick=\"taskManager.deleteEmployee(\\'' + emp + '\\')\" aria-label=\"Remove ' + emp + '\"></button>' +
+                    '</div>'
+                ).join('');
+            }
+            
+            updateEmployeeDropdown() {
+                const dropdown = document.getElementById('employeeName');
+                const currentValue = dropdown.value;
+                dropdown.innerHTML = '<option value=\"\">Choose Employee</option>';
+                this.employees.forEach(emp => {
+                    const option = document.createElement('option');
+                    option.value = emp;
+                    option.textContent = emp;
+                    dropdown.appendChild(option);
+                });
+                const otherOption = document.createElement('option');
+                otherOption.value = 'Other';
+                otherOption.textContent = 'Other (Custom)';
+                dropdown.appendChild(otherOption);
+                
+                if (this.employees.includes(currentValue) || currentValue === 'Other') {
+                    dropdown.value = currentValue;
+                }
+            }
+            
+            updateTaskStatus(taskId, newStatus) {
+                const task = this.tasks.find(t => t.id === taskId);
+                if (task) {
+                    task.status = newStatus;
+                    this.saveTasks();
+                    this.renderTasks();
+                    this.updateStats();
+                    
+                    const statusMessages = {
+                        'not-started': 'Task reset to not started ',
+                        'started': 'Task in progress ',
+                        'done': 'Task completed! '
+                    };
+                    this.showToast(statusMessages[newStatus]);
+                }
+            }
+            
+            deleteTask(taskId) {
+                if (confirm('Delete this task permanently?')) {
+                    this.tasks = this.tasks.filter(t => t.id !== taskId);
+                    this.saveTasks();
+                    this.renderTasks();
+                    this.updateStats();
+                    this.updateEmployeeFilter();
+                    this.showToast('Task deleted');
+                }
+            }
+            
+            getFilteredTasks() {
+                const statusFilter = document.getElementById('statusFilter').value;
+                const employeeFilter = document.getElementById('employeeFilter').value;
+                const priorityFilter = document.getElementById('priorityFilter').value;
+                return this.tasks.filter(task => {
+                    const statusMatch = statusFilter === 'all' || task.status === statusFilter;
+                    const employeeMatch = employeeFilter === 'all' || task.employee === employeeFilter;
+                    const priorityMatch = priorityFilter === 'all' || task.priority === priorityFilter;
+                    return statusMatch && employeeMatch && priorityMatch;
+                });
+            }
+            
+            renderTasks() {
+                const container = document.getElementById('tasksContainer');
+                const filteredTasks = this.getFilteredTasks();
+                if (filteredTasks.length === 0) {
+                    container.innerHTML = '<div class=\"empty-state\"><h3> No tasks found</h3><p>Try adjusting your filters or add a new task!</p></div>';
+                    return;
+                }
+                container.innerHTML = filteredTasks.map(task => {
+                    const priorityIcons = { 'high': '', 'medium': '', 'low': '' };
+                    const statusIcons = { 'not-started': '', 'started': '', 'done': '' };
+                    
+                    return '<div class=\"task-card ' + task.status + '\">' +
+                    '<div class=\"task-header\">' +
+                    '<div class=\"task-info\">' +
+                    '<div class=\"task-title\">' + this.escapeHtml(task.title) + '</div>' +
+                    '<div class=\"task-employee\"> ' + this.escapeHtml(task.employee) + '</div>' +
+                    '<div class=\"task-description\">' +
+                    priorityIcons[task.priority] + ' Priority: <strong>' + task.priority.toUpperCase() + '</strong><br>' +
+                    ' Created: ' + new Date(task.createdAt).toLocaleDateString() +
+                    '</div>' +
+                    '</div>' +
+                    '<div class=\"task-status\">' +
+                    '<select class=\"status-select status-' + task.status + '\" onchange=\"taskManager.updateTaskStatus(' + task.id + ', this.value)\" aria-label=\"Change task status\">' +
+                    '<option value=\"not-started\"' + (task.status === 'not-started' ? ' selected' : '') + '> Not Started</option>' +
+                    '<option value=\"started\"' + (task.status === 'started' ? ' selected' : '') + '> In Progress</option>' +
+                    '<option value=\"done\"' + (task.status === 'done' ? ' selected' : '') + '> Completed</option>' +
+                    '</select>' +
+                    '<div class=\"task-actions\">' +
+                    '<button class=\"btn-small btn-delete\" onclick=\"taskManager.deleteTask(' + task.id + ')\" aria-label=\"Delete task\"> Delete</button>' +
+                    '</div></div></div></div>';
+                }).join('');
+            }
+            
+            updateStats() {
+                const stats = { 'not-started': 0, 'started': 0, 'done': 0 };
+                this.tasks.forEach(task => stats[task.status]++);
+                document.getElementById('notStartedCount').textContent = stats['not-started'];
+                document.getElementById('startedCount').textContent = stats['started'];
+                document.getElementById('doneCount').textContent = stats['done'];
+            }
+            
+            updateEmployeeFilter() {
+                const employeeFilter = document.getElementById('employeeFilter');
+                const employees = [...new Set(this.tasks.map(task => task.employee))].sort();
+                const currentValue = employeeFilter.value;
+                employeeFilter.innerHTML = '<option value=\"all\">All Team Members</option>';
+                employees.forEach(employee => {
+                    const option = document.createElement('option');
+                    option.value = employee;
+                    option.textContent = employee;
+                    employeeFilter.appendChild(option);
+                });
+                if (employees.includes(currentValue)) employeeFilter.value = currentValue;
+            }
+            
+            getPriorityColor(priority) {
+                const colors = { 'high': '#e74c3c', 'medium': '#f39c12', 'low': '#27ae60' };
+                return colors[priority] || '#666';
+            }
+            
+            escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+            
+            loadTasks() {
+                const saved = localStorage.getItem('taskManagerTasks');
+                return saved ? JSON.parse(saved) : [];
+            }
+            
+            saveTasks() {
+                localStorage.setItem('taskManagerTasks', JSON.stringify(this.tasks));
+            }
+            
+            loadEmployees() {
+                const saved = localStorage.getItem('taskManagerEmployees');
+                return saved ? JSON.parse(saved) : ['John Smith', 'Sarah Johnson', 'Mike Davis', 'Emily Brown', 'David Wilson'];
+            }
+            
+            saveEmployees() {
+                localStorage.setItem('taskManagerEmployees', JSON.stringify(this.employees));
+            }
+            
+            getNextTaskId() {
+                const maxId = this.tasks.reduce((max, task) => Math.max(max, task.id || 0), 0);
+                return maxId + 1;
+            }
+        }
+        
+        // Global function for sharing
+        function showShareOptions() {
+            const currentUrl = window.location.href;
+            const appName = 'Employee Task Manager';
+            
+            if (navigator.share) {
+                // Use native sharing on mobile
+                navigator.share({
+                    title: appName,
+                    text: 'Access our team task manager',
+                    url: currentUrl
+                }).catch(console.error);
+            } else {
+                // Fallback for desktop
+                const shareText = `${appName}\n${currentUrl}`;
+                
+                if (navigator.clipboard) {
+                    navigator.clipboard.writeText(currentUrl).then(() => {
+                        alert('URL copied to clipboard! 📋\nShare this link with your team:\n' + currentUrl);
+                    });
+                } else {
+                    // Create temporary input for older browsers
+                    const textArea = document.createElement('textarea');
+                    textArea.value = currentUrl;
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textArea);
+                    alert('URL copied to clipboard! 📋\nShare this link with your team:\n' + currentUrl);
+                }
+            }
+        }
+        
+        const taskManager = new TaskManager();
+    </script>
+</body>
+</html>
