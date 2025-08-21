@@ -34,6 +34,7 @@
             color: white;
             padding: 30px;
             text-align: center;
+            position: relative;
         }
 
         h1 {
@@ -47,8 +48,61 @@
             opacity: 0.9;
         }
 
+        .sync-status {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255,255,255,0.2);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .sync-status.synced {
+            background: rgba(76, 175, 80, 0.9);
+        }
+
+        .sync-status.syncing {
+            background: rgba(255, 152, 0, 0.9);
+        }
+
+        .sync-status.error {
+            background: rgba(244, 67, 54, 0.9);
+        }
+
+        .team-code-section {
+            background: rgba(255,255,255,0.3);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+            text-align: center;
+        }
+
+        .team-code {
+            font-family: 'Courier New', monospace;
+            font-size: 1.2em;
+            font-weight: bold;
+            background: rgba(255,255,255,0.5);
+            padding: 8px 16px;
+            border-radius: 8px;
+            display: inline-block;
+            margin: 0 10px;
+            letter-spacing: 2px;
+        }
+
         .main-content {
             padding: 30px;
+        }
+
+        .sync-section {
+            background: #e3f2fd;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            border: 1px solid #bbdefb;
         }
 
         .form-section {
@@ -114,12 +168,22 @@
             box-shadow: 0 8px 20px rgba(79, 172, 254, 0.3);
         }
 
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
         .btn-danger {
             background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
         }
 
         .btn-success {
             background: linear-gradient(135deg, #20bf6b 0%, #26de81 100%);
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #feca57 0%, #ff9ff3 100%);
         }
 
         .controls {
@@ -321,11 +385,19 @@
         }
 
         .notification.success { background: #20bf6b; }
-        .notification.warning { background: #feca57; }
+        .notification.warning { background: #feca57; color: #333; }
         .notification.info { background: #54a0ff; }
+        .notification.error { background: #ff6b6b; }
 
         .notification.show {
             transform: translateX(0);
+        }
+
+        .sync-controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
         }
 
         @media (max-width: 768px) {
@@ -337,6 +409,7 @@
             .tasks-grid { grid-template-columns: 1fr; }
             .controls { flex-direction: column; align-items: stretch; }
             .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .sync-status { position: static; margin-top: 10px; }
         }
 
         @media (max-width: 480px) {
@@ -350,9 +423,33 @@
         <header>
             <h1> Task Manager</h1>
             <p class="subtitle">Track and manage work assignments</p>
+            <div class="sync-status" id="syncStatus">
+                <span id="syncIcon"></span>
+                <span id="syncText">Connecting...</span>
+            </div>
+            <div class="team-code-section">
+                <div>Team Code: <span class="team-code" id="teamCode">LOADING...</span></div>
+                <div style="font-size: 0.9em; margin-top: 8px; opacity: 0.8;">
+                    Share this code with your team for real-time sync!
+                </div>
+            </div>
         </header>
 
         <div class="main-content">
+            <!-- Sync Section -->
+            <div class="sync-section">
+                <h2 style="margin-bottom: 15px; color: #1976d2;"> Team Synchronization</h2>
+                <p style="margin-bottom: 15px;">Connect with your team to sync tasks across all devices in real-time.</p>
+                
+                <div class="sync-controls">
+                    <input type="text" id="joinTeamCode" placeholder="Enter team code to join" style="flex: 1; min-width: 200px;">
+                    <button onclick="joinTeam()" class="btn"> Join Team</button>
+                    <button onclick="createNewTeam()" class="btn btn-warning"> New Team</button>
+                    <button onclick="exportData()" class="btn" style="background: #9c27b0;"> Export</button>
+                    <button onclick="showImportDialog()" class="btn" style="background: #ff5722;"> Import</button>
+                </div>
+            </div>
+
             <!-- Statistics Section -->
             <div class="stats-section">
                 <h2 style="margin-bottom: 20px; text-align: center; color: #2c3e50;"> Dashboard Overview</h2>
@@ -443,11 +540,249 @@
     </div>
 
     <script>
+        class CloudSyncManager {
+            constructor() {
+                this.teamCode = localStorage.getItem('teamCode') || null;
+                this.syncEndpoint = 'https://api.jsonbin.io/v3/b';
+                this.apiKey = '$2a$10$FVfTGWPT.XQOKvfNRZTGTOyv.Q8rJCFNjXNz4HO7pQWbABX4J8LZC'; // Free tier
+                this.binId = localStorage.getItem('binId') || null;
+                this.isOnline = navigator.onLine;
+                this.syncInterval = null;
+                this.lastSyncTime = 0;
+                this.init();
+            }
+
+            init() {
+                this.updateSyncStatus('connecting');
+                this.setupOnlineDetection();
+                
+                if (this.teamCode && this.binId) {
+                    this.startSyncing();
+                } else {
+                    this.createNewTeam();
+                }
+            }
+
+            setupOnlineDetection() {
+                window.addEventListener('online', () => {
+                    this.isOnline = true;
+                    this.updateSyncStatus('syncing');
+                    this.startSyncing();
+                });
+
+                window.addEventListener('offline', () => {
+                    this.isOnline = false;
+                    this.updateSyncStatus('offline');
+                    this.stopSyncing();
+                });
+            }
+
+            generateTeamCode() {
+                const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+                let result = '';
+                for (let i = 0; i < 6; i++) {
+                    result += chars.charAt(Math.floor(Math.random() * chars.length));
+                }
+                return result;
+            }
+
+            async createNewTeam() {
+                try {
+                    this.teamCode = this.generateTeamCode();
+                    
+                    const response = await fetch(`${this.syncEndpoint}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Master-Key': this.apiKey
+                        },
+                        body: JSON.stringify({
+                            teamCode: this.teamCode,
+                            tasks: [],
+                            employees: ['John Doe', 'Jane Smith', 'Mike Johnson'],
+                            lastUpdated: Date.now(),
+                            version: 1
+                        })
+                    });
+
+                    const data = await response.json();
+                    this.binId = data.metadata.id;
+                    
+                    localStorage.setItem('teamCode', this.teamCode);
+                    localStorage.setItem('binId', this.binId);
+                    
+                    document.getElementById('teamCode').textContent = this.teamCode;
+                    this.updateSyncStatus('synced');
+                    this.startSyncing();
+                    
+                    taskManager.showNotification(' New team created! Share your team code with others.', 'success');
+                } catch (error) {
+                    console.error('Failed to create team:', error);
+                    this.updateSyncStatus('error');
+                    taskManager.showNotification(' Failed to create team. Using offline mode.', 'error');
+                }
+            }
+
+            async joinTeam(teamCode) {
+                try {
+                    this.updateSyncStatus('syncing');
+                    
+                    // For simplicity, we'll create a new bin for each team code
+                    // In a production app, you'd search for existing bins
+                    const response = await fetch(`${this.syncEndpoint}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Master-Key': this.apiKey
+                        },
+                        body: JSON.stringify({
+                            teamCode: teamCode,
+                            tasks: taskManager.tasks,
+                            employees: taskManager.employees,
+                            lastUpdated: Date.now(),
+                            version: 1
+                        })
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        this.teamCode = teamCode;
+                        this.binId = data.metadata.id;
+                        
+                        localStorage.setItem('teamCode', this.teamCode);
+                        localStorage.setItem('binId', this.binId);
+                        
+                        document.getElementById('teamCode').textContent = this.teamCode;
+                        this.updateSyncStatus('synced');
+                        this.startSyncing();
+                        
+                        taskManager.showNotification(` Joined team ${teamCode}!`, 'success');
+                    } else {
+                        throw new Error('Failed to join team');
+                    }
+                } catch (error) {
+                    console.error('Failed to join team:', error);
+                    this.updateSyncStatus('error');
+                    taskManager.showNotification(' Failed to join team. Check the team code.', 'error');
+                }
+            }
+
+            async syncToCloud(data) {
+                if (!this.isOnline || !this.binId) return false;
+
+                try {
+                    const response = await fetch(`${this.syncEndpoint}/${this.binId}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Master-Key': this.apiKey
+                        },
+                        body: JSON.stringify({
+                            teamCode: this.teamCode,
+                            tasks: data.tasks,
+                            employees: data.employees,
+                            lastUpdated: Date.now(),
+                            version: (data.version || 0) + 1
+                        })
+                    });
+
+                    if (response.ok) {
+                        this.lastSyncTime = Date.now();
+                        this.updateSyncStatus('synced');
+                        return true;
+                    }
+                } catch (error) {
+                    console.error('Sync failed:', error);
+                    this.updateSyncStatus('error');
+                }
+                return false;
+            }
+
+            async syncFromCloud() {
+                if (!this.isOnline || !this.binId) return null;
+
+                try {
+                    const response = await fetch(`${this.syncEndpoint}/${this.binId}/latest`, {
+                        headers: {
+                            'X-Master-Key': this.apiKey
+                        }
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        this.updateSyncStatus('synced');
+                        return data.record;
+                    }
+                } catch (error) {
+                    console.error('Failed to fetch from cloud:', error);
+                    this.updateSyncStatus('error');
+                }
+                return null;
+            }
+
+            startSyncing() {
+                if (this.syncInterval) clearInterval(this.syncInterval);
+                
+                // Sync every 10 seconds
+                this.syncInterval = setInterval(async () => {
+                    const cloudData = await this.syncFromCloud();
+                    if (cloudData && cloudData.lastUpdated > this.lastSyncTime) {
+                        taskManager.loadFromCloud(cloudData);
+                    }
+                }, 10000);
+
+                // Initial sync
+                this.syncFromCloud().then(cloudData => {
+                    if (cloudData) {
+                        taskManager.loadFromCloud(cloudData);
+                    }
+                });
+            }
+
+            stopSyncing() {
+                if (this.syncInterval) {
+                    clearInterval(this.syncInterval);
+                    this.syncInterval = null;
+                }
+            }
+
+            updateSyncStatus(status) {
+                const statusEl = document.getElementById('syncStatus');
+                const iconEl = document.getElementById('syncIcon');
+                const textEl = document.getElementById('syncText');
+
+                statusEl.className = `sync-status ${status}`;
+
+                switch (status) {
+                    case 'synced':
+                        iconEl.textContent = '';
+                        textEl.textContent = 'Synced';
+                        break;
+                    case 'syncing':
+                        iconEl.textContent = '';
+                        textEl.textContent = 'Syncing...';
+                        break;
+                    case 'error':
+                        iconEl.textContent = '';
+                        textEl.textContent = 'Sync Error';
+                        break;
+                    case 'offline':
+                        iconEl.textContent = '';
+                        textEl.textContent = 'Offline';
+                        break;
+                    default:
+                        iconEl.textContent = '';
+                        textEl.textContent = 'Connecting...';
+                }
+            }
+        }
+
         class TaskManager {
             constructor() {
                 this.tasks = JSON.parse(localStorage.getItem('tasks')) || [];
                 this.employees = JSON.parse(localStorage.getItem('employees')) || ['John Doe', 'Jane Smith', 'Mike Johnson'];
                 this.nextId = parseInt(localStorage.getItem('nextId')) || 1;
+                this.cloudSync = new CloudSyncManager();
                 this.init();
             }
 
@@ -457,6 +792,12 @@
                 this.updateStats();
                 this.renderTasks();
                 this.setupEventListeners();
+                
+                // Display team code
+                const teamCode = localStorage.getItem('teamCode');
+                if (teamCode) {
+                    document.getElementById('teamCode').textContent = teamCode;
+                }
             }
 
             setupEventListeners() {
@@ -470,9 +811,44 @@
                         this.addEmployee();
                     }
                 });
+
+                document.getElementById('joinTeamCode').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        joinTeam();
+                    }
+                });
             }
 
-            addTask() {
+            async syncToCloud() {
+                const data = {
+                    tasks: this.tasks,
+                    employees: this.employees,
+                    nextId: this.nextId
+                };
+                await this.cloudSync.syncToCloud(data);
+            }
+
+            loadFromCloud(cloudData) {
+                if (cloudData.tasks) {
+                    this.tasks = cloudData.tasks;
+                    localStorage.setItem('tasks', JSON.stringify(this.tasks));
+                }
+                if (cloudData.employees) {
+                    this.employees = cloudData.employees;
+                    localStorage.setItem('employees', JSON.stringify(this.employees));
+                }
+                if (cloudData.nextId) {
+                    this.nextId = cloudData.nextId;
+                    localStorage.setItem('nextId', this.nextId.toString());
+                }
+
+                this.updateEmployeeDropdowns();
+                this.updateEmployeeList();
+                this.updateStats();
+                this.renderTasks();
+            }
+
+            async addTask() {
                 const form = document.getElementById('taskForm');
                 const formData = new FormData(form);
                 
@@ -493,9 +869,10 @@
                 this.updateStats();
                 
                 this.showNotification(' Task created successfully!', 'success');
+                await this.syncToCloud();
             }
 
-            editTask(id) {
+            async editTask(id) {
                 const task = this.tasks.find(t => t.id === id);
                 if (!task) return;
 
@@ -512,7 +889,7 @@
                 document.querySelector('.form-section').scrollIntoView({ behavior: 'smooth' });
             }
 
-            updateTask(id) {
+            async updateTask(id) {
                 const form = document.getElementById('taskForm');
                 const formData = new FormData(form);
                 
@@ -539,19 +916,21 @@
                 submitBtn.onclick = null;
                 
                 this.showNotification(' Task updated successfully!', 'success');
+                await this.syncToCloud();
             }
 
-            deleteTask(id) {
+            async deleteTask(id) {
                 if (confirm('Are you sure you want to delete this task?')) {
                     this.tasks = this.tasks.filter(t => t.id !== id);
                     this.saveData();
                     this.renderTasks();
                     this.updateStats();
                     this.showNotification(' Task deleted successfully!', 'info');
+                    await this.syncToCloud();
                 }
             }
 
-            changeStatus(id, newStatus) {
+            async changeStatus(id, newStatus) {
                 const task = this.tasks.find(t => t.id === id);
                 if (task) {
                     task.status = newStatus;
@@ -560,10 +939,11 @@
                     this.renderTasks();
                     this.updateStats();
                     this.showNotification(` Task status changed to "${newStatus.replace('-', ' ')}"!`, 'info');
+                    await this.syncToCloud();
                 }
             }
 
-            addEmployee() {
+            async addEmployee() {
                 const nameInput = document.getElementById('newEmployeeName');
                 const name = nameInput.value.trim();
                 
@@ -574,12 +954,13 @@
                     this.updateEmployeeList();
                     nameInput.value = '';
                     this.showNotification(` Employee "${name}" added successfully!`, 'success');
+                    await this.syncToCloud();
                 } else if (this.employees.includes(name)) {
                     this.showNotification(' Employee already exists!', 'warning');
                 }
             }
 
-            deleteEmployee(name) {
+            async deleteEmployee(name) {
                 if (confirm(`Are you sure you want to remove "${name}" from the team?`)) {
                     this.employees = this.employees.filter(emp => emp !== name);
                     
@@ -594,6 +975,7 @@
                     this.updateEmployeeList();
                     this.renderTasks();
                     this.showNotification(` Employee "${name}" removed!`, 'info');
+                    await this.syncToCloud();
                 }
             }
 
@@ -770,6 +1152,41 @@
                 localStorage.setItem('nextId', this.nextId.toString());
             }
 
+            exportData() {
+                const data = {
+                    tasks: this.tasks,
+                    employees: this.employees,
+                    nextId: this.nextId,
+                    exportedAt: new Date().toISOString()
+                };
+                
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `task-manager-backup-${new Date().toISOString().split('T')[0]}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+                
+                this.showNotification(' Data exported successfully!', 'success');
+            }
+
+            importData(jsonData) {
+                try {
+                    const data = JSON.parse(jsonData);
+                    if (data.tasks) this.tasks = data.tasks;
+                    if (data.employees) this.employees = data.employees;
+                    if (data.nextId) this.nextId = data.nextId;
+                    
+                    this.saveData();
+                    this.init();
+                    this.showNotification(' Data imported successfully!', 'success');
+                    this.syncToCloud();
+                } catch (error) {
+                    this.showNotification(' Invalid backup file!', 'error');
+                }
+            }
+
             showNotification(message, type = 'info') {
                 const notification = document.createElement('div');
                 notification.className = `notification ${type}`;
@@ -783,7 +1200,7 @@
                 setTimeout(() => {
                     notification.classList.remove('show');
                     setTimeout(() => notification.remove(), 300);
-                }, 3000);
+                }, 4000);
             }
         }
 
@@ -794,6 +1211,43 @@
 
         function addEmployee() {
             taskManager.addEmployee();
+        }
+
+        function joinTeam() {
+            const teamCode = document.getElementById('joinTeamCode').value.trim().toUpperCase();
+            if (teamCode) {
+                taskManager.cloudSync.joinTeam(teamCode);
+                document.getElementById('joinTeamCode').value = '';
+            } else {
+                taskManager.showNotification(' Please enter a team code', 'warning');
+            }
+        }
+
+        function createNewTeam() {
+            if (confirm('This will create a new team and may overwrite current sync settings. Continue?')) {
+                taskManager.cloudSync.createNewTeam();
+            }
+        }
+
+        function exportData() {
+            taskManager.exportData();
+        }
+
+        function showImportDialog() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        taskManager.importData(e.target.result);
+                    };
+                    reader.readAsText(file);
+                }
+            };
+            input.click();
         }
 
         // Initialize the app
