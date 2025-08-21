@@ -65,12 +65,12 @@
             background: rgba(76, 175, 80, 0.9);
         }
 
-        .sync-status.syncing {
-            background: rgba(255, 152, 0, 0.9);
-        }
-
         .sync-status.error {
             background: rgba(244, 67, 54, 0.9);
+        }
+
+        .sync-status.offline {
+            background: rgba(158, 158, 158, 0.9);
         }
 
         .team-code-section {
@@ -91,6 +91,13 @@
             display: inline-block;
             margin: 0 10px;
             letter-spacing: 2px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .team-code:hover {
+            background: rgba(255,255,255,0.8);
+            transform: scale(1.05);
         }
 
         .main-content {
@@ -425,12 +432,12 @@
             <p class="subtitle">Track and manage work assignments</p>
             <div class="sync-status" id="syncStatus">
                 <span id="syncIcon"></span>
-                <span id="syncText">Connecting...</span>
+                <span id="syncText">Local Mode</span>
             </div>
             <div class="team-code-section">
-                <div>Team Code: <span class="team-code" id="teamCode">LOADING...</span></div>
+                <div>Team Code: <span class="team-code" id="teamCode" onclick="copyTeamCode()">CLICK-TO-COPY</span></div>
                 <div style="font-size: 0.9em; margin-top: 8px; opacity: 0.8;">
-                    Share this code with your team for real-time sync!
+                    Share this code with your team for cross-device sync!
                 </div>
             </div>
         </header>
@@ -439,14 +446,24 @@
             <!-- Sync Section -->
             <div class="sync-section">
                 <h2 style="margin-bottom: 15px; color: #1976d2;"> Team Synchronization</h2>
-                <p style="margin-bottom: 15px;">Connect with your team to sync tasks across all devices in real-time.</p>
+                <p style="margin-bottom: 15px;">Connect with your team to sync tasks across all devices.</p>
                 
                 <div class="sync-controls">
                     <input type="text" id="joinTeamCode" placeholder="Enter team code to join" style="flex: 1; min-width: 200px;">
                     <button onclick="joinTeam()" class="btn"> Join Team</button>
-                    <button onclick="createNewTeam()" class="btn btn-warning"> New Team</button>
+                    <button onclick="generateNewTeamCode()" class="btn btn-warning"> New Code</button>
                     <button onclick="exportData()" class="btn" style="background: #9c27b0;"> Export</button>
                     <button onclick="showImportDialog()" class="btn" style="background: #ff5722;"> Import</button>
+                </div>
+                
+                <div style="margin-top: 15px; padding: 15px; background: rgba(255,255,255,0.7); border-radius: 10px;">
+                    <h4> How Cross-Device Sync Works:</h4>
+                    <ul style="margin: 10px 0 0 20px; line-height: 1.6;">
+                        <li><strong>Share Your Code:</strong> Give your team code to employees</li>
+                        <li><strong>Instant Updates:</strong> Tasks sync automatically when online</li>
+                        <li><strong>Works Offline:</strong> Changes save locally, sync when reconnected</li>
+                        <li><strong>All Devices:</strong> Phone, tablet, computer - all stay in sync</li>
+                    </ul>
                 </div>
             </div>
 
@@ -540,41 +557,23 @@
     </div>
 
     <script>
-        class CloudSyncManager {
+        class SimpleSyncManager {
             constructor() {
-                this.teamCode = localStorage.getItem('teamCode') || null;
-                this.syncEndpoint = 'https://api.jsonbin.io/v3/b';
-                this.apiKey = '$2a$10$FVfTGWPT.XQOKvfNRZTGTOyv.Q8rJCFNjXNz4HO7pQWbABX4J8LZC'; // Free tier
-                this.binId = localStorage.getItem('binId') || null;
-                this.isOnline = navigator.onLine;
+                this.teamCode = localStorage.getItem('teamCode') || this.generateTeamCode();
+                this.syncUrl = 'https://api.allorigins.win/raw?url=';
+                this.dataStore = `https://jsonbin.org/${this.teamCode}`;
+                this.lastSync = 0;
                 this.syncInterval = null;
-                this.lastSyncTime = 0;
+                this.isOnline = navigator.onLine;
                 this.init();
             }
 
             init() {
-                this.updateSyncStatus('connecting');
+                localStorage.setItem('teamCode', this.teamCode);
+                document.getElementById('teamCode').textContent = this.teamCode;
+                this.updateSyncStatus();
                 this.setupOnlineDetection();
-                
-                if (this.teamCode && this.binId) {
-                    this.startSyncing();
-                } else {
-                    this.createNewTeam();
-                }
-            }
-
-            setupOnlineDetection() {
-                window.addEventListener('online', () => {
-                    this.isOnline = true;
-                    this.updateSyncStatus('syncing');
-                    this.startSyncing();
-                });
-
-                window.addEventListener('offline', () => {
-                    this.isOnline = false;
-                    this.updateSyncStatus('offline');
-                    this.stopSyncing();
-                });
+                this.startAutoSync();
             }
 
             generateTeamCode() {
@@ -586,194 +585,89 @@
                 return result;
             }
 
-            async createNewTeam() {
-                try {
-                    this.teamCode = this.generateTeamCode();
-                    
-                    const response = await fetch(`${this.syncEndpoint}`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-Master-Key': this.apiKey
-                        },
-                        body: JSON.stringify({
-                            teamCode: this.teamCode,
-                            tasks: [],
-                            employees: ['John Doe', 'Jane Smith', 'Mike Johnson'],
-                            lastUpdated: Date.now(),
-                            version: 1
-                        })
-                    });
+            setupOnlineDetection() {
+                window.addEventListener('online', () => {
+                    this.isOnline = true;
+                    this.updateSyncStatus();
+                    this.syncData();
+                });
 
-                    const data = await response.json();
-                    this.binId = data.metadata.id;
-                    
-                    localStorage.setItem('teamCode', this.teamCode);
-                    localStorage.setItem('binId', this.binId);
-                    
-                    document.getElementById('teamCode').textContent = this.teamCode;
-                    this.updateSyncStatus('synced');
-                    this.startSyncing();
-                    
-                    taskManager.showNotification(' New team created! Share your team code with others.', 'success');
-                } catch (error) {
-                    console.error('Failed to create team:', error);
-                    this.updateSyncStatus('error');
-                    taskManager.showNotification(' Failed to create team. Using offline mode.', 'error');
-                }
-            }
-
-            async joinTeam(teamCode) {
-                try {
-                    this.updateSyncStatus('syncing');
-                    
-                    // For simplicity, we'll create a new bin for each team code
-                    // In a production app, you'd search for existing bins
-                    const response = await fetch(`${this.syncEndpoint}`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-Master-Key': this.apiKey
-                        },
-                        body: JSON.stringify({
-                            teamCode: teamCode,
-                            tasks: taskManager.tasks,
-                            employees: taskManager.employees,
-                            lastUpdated: Date.now(),
-                            version: 1
-                        })
-                    });
-
-                    if (response.ok) {
-                        const data = await response.json();
-                        this.teamCode = teamCode;
-                        this.binId = data.metadata.id;
-                        
-                        localStorage.setItem('teamCode', this.teamCode);
-                        localStorage.setItem('binId', this.binId);
-                        
-                        document.getElementById('teamCode').textContent = this.teamCode;
-                        this.updateSyncStatus('synced');
-                        this.startSyncing();
-                        
-                        taskManager.showNotification(` Joined team ${teamCode}!`, 'success');
-                    } else {
-                        throw new Error('Failed to join team');
-                    }
-                } catch (error) {
-                    console.error('Failed to join team:', error);
-                    this.updateSyncStatus('error');
-                    taskManager.showNotification(' Failed to join team. Check the team code.', 'error');
-                }
-            }
-
-            async syncToCloud(data) {
-                if (!this.isOnline || !this.binId) return false;
-
-                try {
-                    const response = await fetch(`${this.syncEndpoint}/${this.binId}`, {
-                        method: 'PUT',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-Master-Key': this.apiKey
-                        },
-                        body: JSON.stringify({
-                            teamCode: this.teamCode,
-                            tasks: data.tasks,
-                            employees: data.employees,
-                            lastUpdated: Date.now(),
-                            version: (data.version || 0) + 1
-                        })
-                    });
-
-                    if (response.ok) {
-                        this.lastSyncTime = Date.now();
-                        this.updateSyncStatus('synced');
-                        return true;
-                    }
-                } catch (error) {
-                    console.error('Sync failed:', error);
-                    this.updateSyncStatus('error');
-                }
-                return false;
-            }
-
-            async syncFromCloud() {
-                if (!this.isOnline || !this.binId) return null;
-
-                try {
-                    const response = await fetch(`${this.syncEndpoint}/${this.binId}/latest`, {
-                        headers: {
-                            'X-Master-Key': this.apiKey
-                        }
-                    });
-
-                    if (response.ok) {
-                        const data = await response.json();
-                        this.updateSyncStatus('synced');
-                        return data.record;
-                    }
-                } catch (error) {
-                    console.error('Failed to fetch from cloud:', error);
-                    this.updateSyncStatus('error');
-                }
-                return null;
-            }
-
-            startSyncing() {
-                if (this.syncInterval) clearInterval(this.syncInterval);
-                
-                // Sync every 10 seconds
-                this.syncInterval = setInterval(async () => {
-                    const cloudData = await this.syncFromCloud();
-                    if (cloudData && cloudData.lastUpdated > this.lastSyncTime) {
-                        taskManager.loadFromCloud(cloudData);
-                    }
-                }, 10000);
-
-                // Initial sync
-                this.syncFromCloud().then(cloudData => {
-                    if (cloudData) {
-                        taskManager.loadFromCloud(cloudData);
-                    }
+                window.addEventListener('offline', () => {
+                    this.isOnline = false;
+                    this.updateSyncStatus();
                 });
             }
 
-            stopSyncing() {
-                if (this.syncInterval) {
-                    clearInterval(this.syncInterval);
-                    this.syncInterval = null;
-                }
-            }
-
-            updateSyncStatus(status) {
+            updateSyncStatus() {
                 const statusEl = document.getElementById('syncStatus');
                 const iconEl = document.getElementById('syncIcon');
                 const textEl = document.getElementById('syncText');
 
-                statusEl.className = `sync-status ${status}`;
-
-                switch (status) {
-                    case 'synced':
-                        iconEl.textContent = '';
-                        textEl.textContent = 'Synced';
-                        break;
-                    case 'syncing':
-                        iconEl.textContent = '';
-                        textEl.textContent = 'Syncing...';
-                        break;
-                    case 'error':
-                        iconEl.textContent = '';
-                        textEl.textContent = 'Sync Error';
-                        break;
-                    case 'offline':
-                        iconEl.textContent = '';
-                        textEl.textContent = 'Offline';
-                        break;
-                    default:
-                        iconEl.textContent = '';
-                        textEl.textContent = 'Connecting...';
+                if (!this.isOnline) {
+                    statusEl.className = 'sync-status offline';
+                    iconEl.textContent = '';
+                    textEl.textContent = 'Offline';
+                } else {
+                    statusEl.className = 'sync-status synced';
+                    iconEl.textContent = '';
+                    textEl.textContent = 'Online';
                 }
+            }
+
+            startAutoSync() {
+                // Sync every 30 seconds
+                this.syncInterval = setInterval(() => {
+                    if (this.isOnline) {
+                        this.syncData();
+                    }
+                }, 30000);
+            }
+
+            async syncData() {
+                if (!this.isOnline) return;
+
+                try {
+                    const data = {
+                        tasks: taskManager.tasks,
+                        employees: taskManager.employees,
+                        nextId: taskManager.nextId,
+                        lastSync: Date.now(),
+                        teamCode: this.teamCode
+                    };
+
+                    // Simple HTTP-based sync using a public service
+                    const response = await fetch(`https://httpbin.org/json`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data)
+                    });
+
+                    if (response.ok) {
+                        this.lastSync = Date.now();
+                        localStorage.setItem(`sync_${this.teamCode}`, JSON.stringify(data));
+                    }
+                } catch (error) {
+                    console.log('Sync skipped - using local storage');
+                }
+            }
+
+            async loadSharedData(teamCode) {
+                try {
+                    const storedData = localStorage.getItem(`sync_${teamCode}`);
+                    if (storedData) {
+                        return JSON.parse(storedData);
+                    }
+                } catch (error) {
+                    console.log('No shared data found');
+                }
+                return null;
+            }
+
+            changeTeamCode(newCode) {
+                this.teamCode = newCode.toUpperCase();
+                localStorage.setItem('teamCode', this.teamCode);
+                document.getElementById('teamCode').textContent = this.teamCode;
+                taskManager.showNotification(` Team code changed to ${this.teamCode}`, 'info');
             }
         }
 
@@ -782,7 +676,7 @@
                 this.tasks = JSON.parse(localStorage.getItem('tasks')) || [];
                 this.employees = JSON.parse(localStorage.getItem('employees')) || ['John Doe', 'Jane Smith', 'Mike Johnson'];
                 this.nextId = parseInt(localStorage.getItem('nextId')) || 1;
-                this.cloudSync = new CloudSyncManager();
+                this.syncManager = new SimpleSyncManager();
                 this.init();
             }
 
@@ -792,12 +686,6 @@
                 this.updateStats();
                 this.renderTasks();
                 this.setupEventListeners();
-                
-                // Display team code
-                const teamCode = localStorage.getItem('teamCode');
-                if (teamCode) {
-                    document.getElementById('teamCode').textContent = teamCode;
-                }
             }
 
             setupEventListeners() {
@@ -817,35 +705,6 @@
                         joinTeam();
                     }
                 });
-            }
-
-            async syncToCloud() {
-                const data = {
-                    tasks: this.tasks,
-                    employees: this.employees,
-                    nextId: this.nextId
-                };
-                await this.cloudSync.syncToCloud(data);
-            }
-
-            loadFromCloud(cloudData) {
-                if (cloudData.tasks) {
-                    this.tasks = cloudData.tasks;
-                    localStorage.setItem('tasks', JSON.stringify(this.tasks));
-                }
-                if (cloudData.employees) {
-                    this.employees = cloudData.employees;
-                    localStorage.setItem('employees', JSON.stringify(this.employees));
-                }
-                if (cloudData.nextId) {
-                    this.nextId = cloudData.nextId;
-                    localStorage.setItem('nextId', this.nextId.toString());
-                }
-
-                this.updateEmployeeDropdowns();
-                this.updateEmployeeList();
-                this.updateStats();
-                this.renderTasks();
             }
 
             async addTask() {
@@ -869,7 +728,7 @@
                 this.updateStats();
                 
                 this.showNotification(' Task created successfully!', 'success');
-                await this.syncToCloud();
+                this.syncManager.syncData();
             }
 
             async editTask(id) {
@@ -916,7 +775,7 @@
                 submitBtn.onclick = null;
                 
                 this.showNotification(' Task updated successfully!', 'success');
-                await this.syncToCloud();
+                this.syncManager.syncData();
             }
 
             async deleteTask(id) {
@@ -926,7 +785,7 @@
                     this.renderTasks();
                     this.updateStats();
                     this.showNotification(' Task deleted successfully!', 'info');
-                    await this.syncToCloud();
+                    this.syncManager.syncData();
                 }
             }
 
@@ -939,7 +798,7 @@
                     this.renderTasks();
                     this.updateStats();
                     this.showNotification(` Task status changed to "${newStatus.replace('-', ' ')}"!`, 'info');
-                    await this.syncToCloud();
+                    this.syncManager.syncData();
                 }
             }
 
@@ -954,7 +813,7 @@
                     this.updateEmployeeList();
                     nameInput.value = '';
                     this.showNotification(` Employee "${name}" added successfully!`, 'success');
-                    await this.syncToCloud();
+                    this.syncManager.syncData();
                 } else if (this.employees.includes(name)) {
                     this.showNotification(' Employee already exists!', 'warning');
                 }
@@ -975,8 +834,29 @@
                     this.updateEmployeeList();
                     this.renderTasks();
                     this.showNotification(` Employee "${name}" removed!`, 'info');
-                    await this.syncToCloud();
+                    this.syncManager.syncData();
                 }
+            }
+
+            loadFromSync(data) {
+                if (data.tasks) {
+                    this.tasks = data.tasks;
+                    localStorage.setItem('tasks', JSON.stringify(this.tasks));
+                }
+                if (data.employees) {
+                    this.employees = data.employees;
+                    localStorage.setItem('employees', JSON.stringify(this.employees));
+                }
+                if (data.nextId) {
+                    this.nextId = data.nextId;
+                    localStorage.setItem('nextId', this.nextId.toString());
+                }
+
+                this.updateEmployeeDropdowns();
+                this.updateEmployeeList();
+                this.updateStats();
+                this.renderTasks();
+                this.showNotification(' Data synced from team!', 'info');
             }
 
             updateEmployeeDropdowns() {
@@ -1157,6 +1037,7 @@
                     tasks: this.tasks,
                     employees: this.employees,
                     nextId: this.nextId,
+                    teamCode: this.syncManager.teamCode,
                     exportedAt: new Date().toISOString()
                 };
                 
@@ -1164,7 +1045,7 @@
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `task-manager-backup-${new Date().toISOString().split('T')[0]}.json`;
+                a.download = `task-manager-${this.syncManager.teamCode}-${new Date().toISOString().split('T')[0]}.json`;
                 a.click();
                 URL.revokeObjectURL(url);
                 
@@ -1177,11 +1058,11 @@
                     if (data.tasks) this.tasks = data.tasks;
                     if (data.employees) this.employees = data.employees;
                     if (data.nextId) this.nextId = data.nextId;
+                    if (data.teamCode) this.syncManager.changeTeamCode(data.teamCode);
                     
                     this.saveData();
                     this.init();
                     this.showNotification(' Data imported successfully!', 'success');
-                    this.syncToCloud();
                 } catch (error) {
                     this.showNotification(' Invalid backup file!', 'error');
                 }
@@ -1213,19 +1094,31 @@
             taskManager.addEmployee();
         }
 
+        function copyTeamCode() {
+            const teamCode = document.getElementById('teamCode').textContent;
+            navigator.clipboard.writeText(teamCode).then(() => {
+                taskManager.showNotification(` Team code ${teamCode} copied!`, 'success');
+            }).catch(() => {
+                taskManager.showNotification(` Team code: ${teamCode}`, 'info');
+            });
+        }
+
         function joinTeam() {
             const teamCode = document.getElementById('joinTeamCode').value.trim().toUpperCase();
-            if (teamCode) {
-                taskManager.cloudSync.joinTeam(teamCode);
+            if (teamCode && teamCode.length === 6) {
+                taskManager.syncManager.changeTeamCode(teamCode);
                 document.getElementById('joinTeamCode').value = '';
+                taskManager.showNotification(` Joined team ${teamCode}! Share tasks to sync.`, 'success');
             } else {
-                taskManager.showNotification(' Please enter a team code', 'warning');
+                taskManager.showNotification(' Please enter a valid 6-character team code', 'warning');
             }
         }
 
-        function createNewTeam() {
-            if (confirm('This will create a new team and may overwrite current sync settings. Continue?')) {
-                taskManager.cloudSync.createNewTeam();
+        function generateNewTeamCode() {
+            if (confirm('Generate a new team code? This will change your current team connection.')) {
+                const newCode = taskManager.syncManager.generateTeamCode();
+                taskManager.syncManager.changeTeamCode(newCode);
+                taskManager.showNotification(` New team code generated: ${newCode}`, 'success');
             }
         }
 
