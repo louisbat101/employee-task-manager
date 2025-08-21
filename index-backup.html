@@ -4,11 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Employee Task Manager</title>
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#4facfe">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="Task Manager">
     <style>
         * {
             margin: 0;
@@ -51,30 +46,6 @@
         .subtitle {
             font-size: 1.1em;
             opacity: 0.9;
-        }
-
-        .notification-status {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: rgba(255,255,255,0.2);
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-size: 14px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .notification-status:hover {
-            background: rgba(255,255,255,0.3);
-        }
-
-        .notification-status.enabled {
-            background: rgba(76, 175, 80, 0.9);
-        }
-
-        .notification-status.disabled {
-            background: rgba(255, 152, 0, 0.9);
         }
 
         .main-content {
@@ -416,51 +387,6 @@
             text-align: center;
         }
 
-        .notification-settings {
-            background: #fff3cd;
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            border: 1px solid #ffeaa7;
-        }
-
-        .notification-toggle {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin: 10px 0;
-        }
-
-        .toggle-switch {
-            position: relative;
-            width: 50px;
-            height: 24px;
-            background: #ccc;
-            border-radius: 24px;
-            cursor: pointer;
-            transition: background 0.3s;
-        }
-
-        .toggle-switch.active {
-            background: #4facfe;
-        }
-
-        .toggle-switch::after {
-            content: '';
-            position: absolute;
-            top: 2px;
-            left: 2px;
-            width: 20px;
-            height: 20px;
-            background: white;
-            border-radius: 50%;
-            transition: transform 0.3s;
-        }
-
-        .toggle-switch.active::after {
-            transform: translateX(26px);
-        }
-
         @media (max-width: 768px) {
             body {
                 padding: 10px;
@@ -515,12 +441,6 @@
                 padding: 20px;
                 max-width: 90%;
             }
-
-            .notification-status {
-                position: static;
-                margin-top: 10px;
-                display: inline-block;
-            }
         }
 
         @media (max-width: 480px) {
@@ -566,9 +486,6 @@
         <header>
             <h1> Task Manager</h1>
             <p class="subtitle">Track and manage work assignments</p>
-            <div class="notification-status" id="notificationStatus" onclick="toggleNotifications()">
-                 Notifications: <span id="notificationText">Checking...</span>
-            </div>
             <div style="margin-top: 15px;">
                 <button onclick="showShareOptions()" class="btn" style="background: rgba(255,255,255,0.2); font-size: 14px; padding: 8px 16px;">
                      Share App
@@ -577,32 +494,6 @@
         </header>
 
         <div class="main-content">
-            <!-- Notification Settings -->
-            <div class="notification-settings" id="notificationSettings" style="display: none;">
-                <h3> Notification Settings</h3>
-                <p>Customize when you want to receive notifications:</p>
-                
-                <div class="notification-toggle">
-                    <div class="toggle-switch active" id="taskAssignedToggle" onclick="toggleSetting('taskAssigned')"></div>
-                    <label>New task assignments</label>
-                </div>
-                
-                <div class="notification-toggle">
-                    <div class="toggle-switch active" id="statusChangeToggle" onclick="toggleSetting('statusChange')"></div>
-                    <label>Task status changes</label>
-                </div>
-                
-                <div class="notification-toggle">
-                    <div class="toggle-switch active" id="highPriorityToggle" onclick="toggleSetting('highPriority')"></div>
-                    <label>High priority task alerts</label>
-                </div>
-                
-                <div class="notification-toggle">
-                    <div class="toggle-switch active" id="remindersToggle" onclick="toggleSetting('reminders')"></div>
-                    <label>Task reminders (5 min after creation)</label>
-                </div>
-            </div>
-
             <!-- Statistics Section -->
             <div class="stats-section">
                 <h2 style="margin-bottom: 20px; text-align: center; color: #2c3e50;"> Dashboard Overview</h2>
@@ -716,219 +607,11 @@
     </div>
 
     <script>
-        // Notification Manager
-        class NotificationManager {
-            constructor() {
-                this.settings = JSON.parse(localStorage.getItem('notificationSettings')) || {
-                    taskAssigned: true,
-                    statusChange: true,
-                    highPriority: true,
-                    reminders: true
-                };
-                this.init();
-            }
-
-            async init() {
-                this.updateNotificationStatus();
-                if ('Notification' in window && 'serviceWorker' in navigator) {
-                    await this.checkPermission();
-                }
-            }
-
-            async checkPermission() {
-                const permission = Notification.permission;
-                this.updateNotificationStatus(permission);
-                
-                if (permission === 'default') {
-                    // Don't auto-request, let user click to enable
-                    return;
-                } else if (permission === 'granted') {
-                    this.registerServiceWorker();
-                }
-            }
-
-            async requestPermission() {
-                if ('Notification' in window) {
-                    const permission = await Notification.requestPermission();
-                    this.updateNotificationStatus(permission);
-                    
-                    if (permission === 'granted') {
-                        this.registerServiceWorker();
-                        this.showBrowserNotification(' Notifications Enabled!', 'You will now receive task updates and reminders.');
-                        return true;
-                    } else {
-                        taskManager.showNotification(' Notifications blocked. Enable them in your browser settings.', 'warning');
-                        return false;
-                    }
-                }
-                return false;
-            }
-
-            updateNotificationStatus(permission = Notification.permission) {
-                const statusEl = document.getElementById('notificationStatus');
-                const textEl = document.getElementById('notificationText');
-                
-                if (!('Notification' in window)) {
-                    statusEl.className = 'notification-status disabled';
-                    textEl.textContent = 'Not Supported';
-                    return;
-                }
-
-                switch (permission) {
-                    case 'granted':
-                        statusEl.className = 'notification-status enabled';
-                        textEl.textContent = 'Enabled';
-                        break;
-                    case 'denied':
-                        statusEl.className = 'notification-status disabled';
-                        textEl.textContent = 'Blocked';
-                        break;
-                    default:
-                        statusEl.className = 'notification-status';
-                        textEl.textContent = 'Click to Enable';
-                }
-            }
-
-            async registerServiceWorker() {
-                if ('serviceWorker' in navigator) {
-                    try {
-                        // Create a simple service worker inline since we can't create a separate file
-                        const swCode = `
-                            self.addEventListener('push', function(event) {
-                                const options = {
-                                    body: event.data ? event.data.text() : 'New notification',
-                                    icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90"></text></svg>',
-                                    badge: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90"></text></svg>',
-                                    vibrate: [200, 100, 200],
-                                    tag: 'task-manager'
-                                };
-                                event.waitUntil(
-                                    self.registration.showNotification('Task Manager', options)
-                                );
-                            });
-                            
-                            self.addEventListener('notificationclick', function(event) {
-                                event.notification.close();
-                                event.waitUntil(
-                                    clients.openWindow('/')
-                                );
-                            });
-                        `;
-                        
-                        const blob = new Blob([swCode], { type: 'application/javascript' });
-                        const swUrl = URL.createObjectURL(blob);
-                        const registration = await navigator.serviceWorker.register(swUrl);
-                        console.log('Service Worker registered successfully');
-                        return registration;
-                    } catch (error) {
-                        console.log('Service Worker registration failed:', error);
-                    }
-                }
-            }
-
-            showBrowserNotification(title, body, options = {}) {
-                if (Notification.permission === 'granted') {
-                    const defaultOptions = {
-                        body: body,
-                        icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90"></text></svg>',
-                        badge: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90"></text></svg>',
-                        tag: 'task-manager',
-                        requireInteraction: false,
-                        vibrate: [200, 100, 200],
-                        ...options
-                    };
-
-                    if ('serviceWorker' in navigator && navigator.serviceWorker.ready) {
-                        navigator.serviceWorker.ready.then(registration => {
-                            registration.showNotification(title, defaultOptions);
-                        }).catch(() => {
-                            new Notification(title, defaultOptions);
-                        });
-                    } else {
-                        new Notification(title, defaultOptions);
-                    }
-                }
-            }
-
-            scheduleReminder(task, delay = 300000) { // 5 minutes default
-                if (!this.settings.reminders) return;
-                
-                setTimeout(() => {
-                    if (task.status !== 'completed') {
-                        this.showBrowserNotification(
-                            ' Task Reminder',
-                            `Don't forget: "${task.title}" is ${task.status.replace('-', ' ')}`,
-                            { 
-                                tag: `reminder-${task.id}`,
-                                requireInteraction: true 
-                            }
-                        );
-                    }
-                }, delay);
-            }
-
-            notifyTaskAssigned(task) {
-                if (!this.settings.taskAssigned) return;
-                
-                this.showBrowserNotification(
-                    ' New Task Assigned',
-                    `"${task.title}" has been assigned to ${task.assignedTo}`,
-                    { 
-                        tag: `new-task-${task.id}`,
-                        requireInteraction: true 
-                    }
-                );
-            }
-
-            notifyStatusChange(task, oldStatus) {
-                if (!this.settings.statusChange) return;
-                
-                const statusEmojis = {
-                    'not-started': '',
-                    'in-progress': '',
-                    'completed': ''
-                };
-
-                this.showBrowserNotification(
-                    `${statusEmojis[task.status]} Status Updated`,
-                    `"${task.title}" is now ${task.status.replace('-', ' ')}`,
-                    { 
-                        tag: `status-${task.id}`,
-                        requireInteraction: false 
-                    }
-                );
-            }
-
-            notifyHighPriorityTask(task) {
-                if (!this.settings.highPriority) return;
-                
-                this.showBrowserNotification(
-                    ' High Priority Task',
-                    `Urgent: "${task.title}" requires immediate attention`,
-                    { 
-                        tag: `urgent-${task.id}`,
-                        requireInteraction: true,
-                        vibrate: [300, 100, 300, 100, 300]
-                    }
-                );
-            }
-
-            updateSettings(setting, value) {
-                this.settings[setting] = value;
-                localStorage.setItem('notificationSettings', JSON.stringify(this.settings));
-            }
-
-            getSettings() {
-                return this.settings;
-            }
-        }
-
         class TaskManager {
             constructor() {
                 this.tasks = JSON.parse(localStorage.getItem('tasks')) || [];
                 this.employees = JSON.parse(localStorage.getItem('employees')) || ['John Doe', 'Jane Smith', 'Mike Johnson'];
                 this.nextId = parseInt(localStorage.getItem('nextId')) || 1;
-                this.notificationManager = new NotificationManager();
                 this.init();
             }
 
@@ -938,7 +621,6 @@
                 this.updateStats();
                 this.renderTasks();
                 this.setupEventListeners();
-                this.updateNotificationSettingsUI();
             }
 
             setupEventListeners() {
@@ -976,13 +658,6 @@
                 
                 // Show success message
                 this.showNotification(' Task created successfully!', 'success');
-                
-                // Send notifications
-                this.notificationManager.notifyTaskAssigned(task);
-                if (task.priority === 'high') {
-                    this.notificationManager.notifyHighPriorityTask(task);
-                }
-                this.notificationManager.scheduleReminder(task);
             }
 
             editTask(id) {
@@ -1011,8 +686,6 @@
                 const taskIndex = this.tasks.findIndex(t => t.id === id);
                 if (taskIndex === -1) return;
 
-                const oldTask = { ...this.tasks[taskIndex] };
-                
                 this.tasks[taskIndex] = {
                     ...this.tasks[taskIndex],
                     title: formData.get('taskTitle'),
@@ -1022,8 +695,6 @@
                     status: formData.get('status'),
                     updatedAt: new Date().toISOString()
                 };
-
-                const updatedTask = this.tasks[taskIndex];
 
                 this.saveData();
                 form.reset();
@@ -1036,11 +707,6 @@
                 submitBtn.onclick = null;
                 
                 this.showNotification(' Task updated successfully!', 'success');
-                
-                // Notify if status changed
-                if (oldTask.status !== updatedTask.status) {
-                    this.notificationManager.notifyStatusChange(updatedTask, oldTask.status);
-                }
             }
 
             deleteTask(id) {
@@ -1056,18 +722,12 @@
             changeStatus(id, newStatus) {
                 const task = this.tasks.find(t => t.id === id);
                 if (task) {
-                    const oldStatus = task.status;
                     task.status = newStatus;
                     task.updatedAt = new Date().toISOString();
                     this.saveData();
                     this.renderTasks();
                     this.updateStats();
                     this.showNotification(` Task status changed to "${newStatus}"!`, 'info');
-                    
-                    // Send notification for status change
-                    if (oldStatus !== newStatus) {
-                        this.notificationManager.notifyStatusChange(task, oldStatus);
-                    }
                 }
             }
 
@@ -1277,17 +937,6 @@
                 `;
             }
 
-            updateNotificationSettingsUI() {
-                const settings = this.notificationManager.getSettings();
-                
-                Object.keys(settings).forEach(key => {
-                    const toggle = document.getElementById(`${key}Toggle`);
-                    if (toggle) {
-                        toggle.className = settings[key] ? 'toggle-switch active' : 'toggle-switch';
-                    }
-                });
-            }
-
             saveData() {
                 localStorage.setItem('tasks', JSON.stringify(this.tasks));
                 localStorage.setItem('employees', JSON.stringify(this.employees));
@@ -1365,30 +1014,6 @@
             const url = encodeURIComponent(window.location.href);
             const message = encodeURIComponent(`Employee Task Manager: ${window.location.href}`);
             window.open(`sms:?body=${message}`);
-        }
-
-        async function toggleNotifications() {
-            const permission = Notification.permission;
-            
-            if (permission === 'granted') {
-                // Show settings
-                const settingsDiv = document.getElementById('notificationSettings');
-                settingsDiv.style.display = settingsDiv.style.display === 'none' ? 'block' : 'none';
-            } else {
-                // Request permission
-                await taskManager.notificationManager.requestPermission();
-            }
-        }
-
-        function toggleSetting(setting) {
-            const currentValue = taskManager.notificationManager.getSettings()[setting];
-            const newValue = !currentValue;
-            
-            taskManager.notificationManager.updateSettings(setting, newValue);
-            taskManager.updateNotificationSettingsUI();
-            
-            const toggle = document.getElementById(`${setting}Toggle`);
-            toggle.className = newValue ? 'toggle-switch active' : 'toggle-switch';
         }
 
         // Close modal when clicking outside
