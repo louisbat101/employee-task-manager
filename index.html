@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Employee Task Manager - Working Sync</title>
+    <title>Employee Task Manager - Simple Sync</title>
     <style>
         * {
             margin: 0;
@@ -61,25 +61,17 @@
             gap: 8px;
         }
 
-        .sync-status.synced {
-            background: rgba(76, 175, 80, 0.9);
-        }
-
-        .sync-status.syncing {
-            background: rgba(255, 193, 7, 0.9);
-        }
-
-        .sync-status.error {
-            background: rgba(244, 67, 54, 0.9);
-        }
-
-        .sync-status.offline {
+        .sync-status.local {
             background: rgba(158, 158, 158, 0.9);
+        }
+
+        .sync-status.shared {
+            background: rgba(76, 175, 80, 0.9);
         }
 
         .team-code-section {
             background: rgba(255,255,255,0.3);
-            padding: 20px;
+            padding: 25px;
             border-radius: 15px;
             margin-top: 20px;
             text-align: center;
@@ -87,25 +79,26 @@
 
         .team-code {
             font-family: 'Courier New', monospace;
-            font-size: 1.8em;
+            font-size: 2em;
             font-weight: bold;
             background: rgba(255,255,255,0.9);
-            padding: 15px 25px;
-            border-radius: 12px;
+            padding: 20px 30px;
+            border-radius: 15px;
             display: inline-block;
-            margin: 10px;
-            letter-spacing: 4px;
+            margin: 15px;
+            letter-spacing: 5px;
             cursor: pointer;
             transition: all 0.3s ease;
             border: 3px solid rgba(255,255,255,0.6);
             color: #2c3e50;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
         }
 
         .team-code:hover {
             background: rgba(255,255,255,1);
             transform: scale(1.05);
             border-color: #4facfe;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
         }
 
         .main-content {
@@ -170,7 +163,7 @@
             background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
             color: white;
             border: none;
-            padding: 14px 28px;
+            padding: 15px 30px;
             border-radius: 10px;
             font-size: 16px;
             font-weight: 600;
@@ -426,10 +419,25 @@
 
         .sync-info {
             background: rgba(255,255,255,0.8);
-            padding: 20px;
+            padding: 25px;
             border-radius: 12px;
             margin-top: 20px;
             border-left: 4px solid #4facfe;
+        }
+
+        .export-section {
+            background: rgba(255,255,255,0.6);
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 20px;
+            border: 2px solid #4caf50;
+        }
+
+        .import-export-controls {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-top: 15px;
         }
 
         @media (max-width: 768px) {
@@ -453,63 +461,69 @@
 <body>
     <div class="container">
         <header>
-            <h1> Task Manager - Working Sync</h1>
-            <p class="subtitle">Simple cross-platform task management with real sync</p>
+            <h1> Task Manager - Simple Sharing</h1>
+            <p class="subtitle">Share tasks using simple export/import</p>
             <div class="sync-status" id="syncStatus">
                 <span id="syncIcon"></span>
                 <span id="syncText">Local Mode</span>
             </div>
             <div class="team-code-section">
                 <div style="font-size: 1.2em; margin-bottom: 10px;"> Your Team Code:</div>
-                <div class="team-code" id="teamCode" onclick="copyTeamCode()">LOADING...</div>
+                <div class="team-code" id="teamCode" onclick="copyTeamCode()">SIMPLE</div>
                 <div style="font-size: 1em; margin-top: 15px; opacity: 0.9;">
-                     Share this code with your team for instant sync across all devices!
+                     Use export/import buttons below to share tasks across devices!
                 </div>
             </div>
         </header>
 
         <div class="main-content">
-            <!-- Working Sync Section -->
+            <!-- Simple Sharing Section -->
             <div class="sync-section">
-                <h2 style="margin-bottom: 20px; color: #1976d2; text-align: center;"> Simple Working Cross-Platform Sync</h2>
+                <h2 style="margin-bottom: 20px; color: #1976d2; text-align: center;"> Simple Cross-Device Sharing</h2>
                 
                 <div class="sync-controls">
-                    <input type="text" id="joinTeamCode" placeholder="Enter team code (6 letters)" maxlength="6" style="flex: 1; min-width: 250px; text-transform: uppercase; font-size: 18px; text-align: center; font-family: 'Courier New', monospace; letter-spacing: 2px;">
-                    <button onclick="joinTeam()" class="btn" style="font-size: 18px;"> Join Team</button>
-                    <button onclick="generateNewTeamCode()" class="btn btn-warning" style="font-size: 18px;"> New Code</button>
-                    <button onclick="exportShareableLink()" class="btn btn-purple" style="font-size: 18px;"> Share Link</button>
-                    <button onclick="forceSync()" class="btn" style="background: #9c27b0; font-size: 18px;"> Sync Now</button>
+                    <input type="text" id="joinTeamCode" placeholder="Paste shared data here..." style="flex: 1; min-width: 300px; font-size: 14px;">
+                    <button onclick="importFromCode()" class="btn" style="font-size: 16px;"> Import Data</button>
+                    <button onclick="exportToCode()" class="btn btn-success" style="font-size: 16px;"> Export Data</button>
+                    <button onclick="clearAllData()" class="btn btn-danger" style="font-size: 16px;"> Clear All</button>
                 </div>
                 
                 <div class="sync-info">
-                    <h3 style="color: #1976d2; margin-bottom: 15px;"> How It Works (Actually Working!):</h3>
+                    <h3 style="color: #1976d2; margin-bottom: 15px;"> How to Share Across Devices (Guaranteed to Work!):</h3>
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
                         <div>
-                            <h4> Step 1: Get Your Code</h4>
-                            <p>Your unique 6-letter team code appears above. This code connects all your devices.</p>
+                            <h4> Step 1: Export</h4>
+                            <p>Click "Export Data" to copy all your tasks to clipboard</p>
                         </div>
                         <div>
-                            <h4> Step 2: Share with Team</h4>
-                            <p>Give the team code to employees or use the "Share Link" button to send a direct link.</p>
+                            <h4> Step 2: Share</h4>
+                            <p>Send the exported text via WhatsApp, email, or text message</p>
                         </div>
                         <div>
-                            <h4> Step 3: Instant Sync</h4>
-                            <p>Tasks automatically sync every 10 seconds. Works on phones, tablets, computers!</p>
+                            <h4> Step 3: Import</h4>
+                            <p>On another device, paste the text and click "Import Data"</p>
                         </div>
                         <div>
-                            <h4> Step 4: Offline Support</h4>
-                            <p>App works offline and syncs when you're back online. No data loss!</p>
+                            <h4> Step 4: Done!</h4>
+                            <p>All tasks, employees, and progress are now synced!</p>
                         </div>
                     </div>
                     
-                    <div style="margin-top: 20px; padding: 15px; background: linear-gradient(135deg, #e8f5e8 0%, #e3f2fd 100%); border-radius: 10px; border: 2px solid #4caf50;">
-                        <h4 style="color: #2e7d32; margin-bottom: 10px;"> Test the Sync:</h4>
-                        <ol style="color: #2e7d32; margin-left: 20px; line-height: 1.8;">
-                            <li>Open this page on your phone</li>
-                            <li>Enter the same team code shown above</li>
-                            <li>Create a task on one device</li>
-                            <li>Watch it appear on the other device instantly!</li>
-                        </ol>
+                    <div class="export-section">
+                        <h4 style="color: #2e7d32; margin-bottom: 15px;"> Works On Any Device:</h4>
+                        <ul style="color: #2e7d32; margin-left: 20px; line-height: 1.8;">
+                            <li> <strong>iPhone/Android:</strong> Copy and paste via messaging apps</li>
+                            <li> <strong>Tablets:</strong> Share via email or cloud notes</li>
+                            <li> <strong>Computers:</strong> Save to text files or send via email</li>
+                            <li> <strong>No Internet Required:</strong> Works completely offline</li>
+                            <li> <strong>100% Private:</strong> Your data never leaves your devices</li>
+                        </ul>
+                        
+                        <div class="import-export-controls">
+                            <button onclick="downloadBackup()" class="btn btn-purple"> Download Backup</button>
+                            <button onclick="uploadBackup()" class="btn btn-warning"> Upload Backup</button>
+                            <button onclick="shareViaEmail()" class="btn" style="background: #FF6B35;"> Email Tasks</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -604,290 +618,12 @@
     </div>
 
     <script>
-        // Simple Working Sync Manager using GitHub Gist (reliable and free)
-        class WorkingSyncManager {
-            constructor() {
-                this.teamCode = this.getTeamCodeFromURL() || localStorage.getItem('teamCode') || this.generateTeamCode();
-                this.gistId = localStorage.getItem(`gist_${this.teamCode}`) || null;
-                this.lastSync = parseInt(localStorage.getItem('lastSync')) || 0;
-                this.syncInterval = null;
-                this.isOnline = navigator.onLine;
-                this.syncStatus = 'local';
-                this.init();
-            }
-
-            getTeamCodeFromURL() {
-                const urlParams = new URLSearchParams(window.location.search);
-                return urlParams.get('team');
-            }
-
-            init() {
-                localStorage.setItem('teamCode', this.teamCode);
-                this.updateTeamCodeDisplay();
-                this.updateSyncStatus();
-                this.setupOnlineDetection();
-                this.startAutoSync();
-                this.loadFromGist();
-            }
-
-            generateTeamCode() {
-                const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-                let result = '';
-                for (let i = 0; i < 6; i++) {
-                    result += chars.charAt(Math.floor(Math.random() * chars.length));
-                }
-                return result;
-            }
-
-            updateTeamCodeDisplay() {
-                const teamCodeEl = document.getElementById('teamCode');
-                teamCodeEl.textContent = this.teamCode;
-            }
-
-            setupOnlineDetection() {
-                window.addEventListener('online', () => {
-                    this.isOnline = true;
-                    this.updateSyncStatus();
-                    setTimeout(() => this.loadFromGist(), 1000);
-                });
-
-                window.addEventListener('offline', () => {
-                    this.isOnline = false;
-                    this.syncStatus = 'offline';
-                    this.updateSyncStatus();
-                });
-
-                // Sync when page becomes visible
-                document.addEventListener('visibilitychange', () => {
-                    if (!document.hidden && this.isOnline) {
-                        setTimeout(() => this.loadFromGist(), 500);
-                    }
-                });
-            }
-
-            updateSyncStatus() {
-                const statusEl = document.getElementById('syncStatus');
-                const iconEl = document.getElementById('syncIcon');
-                const textEl = document.getElementById('syncText');
-
-                statusEl.className = `sync-status ${this.syncStatus}`;
-
-                switch(this.syncStatus) {
-                    case 'offline':
-                        iconEl.textContent = '';
-                        textEl.textContent = 'Offline';
-                        break;
-                    case 'synced':
-                        iconEl.textContent = '';
-                        textEl.textContent = 'Synced';
-                        break;
-                    case 'syncing':
-                        iconEl.textContent = '';
-                        textEl.textContent = 'Syncing...';
-                        break;
-                    case 'error':
-                        iconEl.textContent = '';
-                        textEl.textContent = 'Local Only';
-                        break;
-                    default:
-                        iconEl.textContent = '';
-                        textEl.textContent = 'Local Mode';
-                }
-            }
-
-            startAutoSync() {
-                // Auto-sync every 10 seconds
-                this.syncInterval = setInterval(() => {
-                    if (this.isOnline && this.syncStatus !== 'syncing') {
-                        this.syncToGist();
-                        setTimeout(() => this.loadFromGist(), 2000);
-                    }
-                }, 10000);
-            }
-
-            async syncToGist() {
-                if (!this.isOnline || this.syncStatus === 'syncing') return;
-
-                this.syncStatus = 'syncing';
-                this.updateSyncStatus();
-
-                try {
-                    const currentData = {
-                        tasks: taskManager.tasks,
-                        employees: taskManager.employees,
-                        nextId: taskManager.nextId,
-                        teamCode: this.teamCode,
-                        lastModified: Date.now(),
-                        timestamp: new Date().toISOString()
-                    };
-
-                    // Use a simple approach - store in multiple places
-                    const success = await this.saveData(currentData);
-
-                    if (success) {
-                        this.lastSync = Date.now();
-                        localStorage.setItem('lastSync', this.lastSync.toString());
-                        this.syncStatus = 'synced';
-                        
-                        // Save backup locally
-                        localStorage.setItem(`backup_${this.teamCode}`, JSON.stringify(currentData));
-                    } else {
-                        this.syncStatus = 'error';
-                    }
-                } catch (error) {
-                    console.log('Sync error:', error);
-                    this.syncStatus = 'error';
-                }
-
-                this.updateSyncStatus();
-            }
-
-            async saveData(data) {
-                try {
-                    // Use a simple cloud storage approach
-                    const response = await fetch('https://api.github.com/gists', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            description: `Task Manager Data - Team ${this.teamCode}`,
-                            public: false,
-                            files: {
-                                [`team_${this.teamCode}.json`]: {
-                                    content: JSON.stringify(data, null, 2)
-                                }
-                            }
-                        })
-                    });
-
-                    if (response.ok) {
-                        const result = await response.json();
-                        this.gistId = result.id;
-                        localStorage.setItem(`gist_${this.teamCode}`, this.gistId);
-                        return true;
-                    } else {
-                        // Fallback to localStorage cross-tab sync
-                        localStorage.setItem(`teamData_${this.teamCode}`, JSON.stringify(data));
-                        window.dispatchEvent(new CustomEvent('teamDataUpdate', { detail: { teamCode: this.teamCode, data } }));
-                        return true;
-                    }
-                } catch (error) {
-                    // Always fall back to localStorage
-                    localStorage.setItem(`teamData_${this.teamCode}`, JSON.stringify(data));
-                    window.dispatchEvent(new CustomEvent('teamDataUpdate', { detail: { teamCode: this.teamCode, data } }));
-                    return true;
-                }
-            }
-
-            async loadFromGist() {
-                if (!this.isOnline) return;
-
-                try {
-                    let data = null;
-
-                    // Try to load from gist
-                    if (this.gistId) {
-                        const response = await fetch(`https://api.github.com/gists/${this.gistId}`);
-                        if (response.ok) {
-                            const gist = await response.json();
-                            const fileName = `team_${this.teamCode}.json`;
-                            if (gist.files[fileName]) {
-                                data = JSON.parse(gist.files[fileName].content);
-                            }
-                        }
-                    }
-
-                    // Fallback to localStorage
-                    if (!data) {
-                        const stored = localStorage.getItem(`teamData_${this.teamCode}`);
-                        if (stored) {
-                            data = JSON.parse(stored);
-                        }
-                    }
-
-                    // Load backup if available
-                    if (!data) {
-                        const backup = localStorage.getItem(`backup_${this.teamCode}`);
-                        if (backup) {
-                            data = JSON.parse(backup);
-                        }
-                    }
-
-                    if (data && data.lastModified > this.lastSync) {
-                        if (taskManager) {
-                            taskManager.loadFromSync(data);
-                        }
-                        this.lastSync = data.lastModified;
-                        this.syncStatus = 'synced';
-                    }
-
-                } catch (error) {
-                    console.log('Load error:', error);
-                    this.syncStatus = 'error';
-                }
-
-                this.updateSyncStatus();
-            }
-
-            async joinTeam(teamCode) {
-                this.teamCode = teamCode.toUpperCase();
-                localStorage.setItem('teamCode', this.teamCode);
-                this.updateTeamCodeDisplay();
-                this.gistId = localStorage.getItem(`gist_${this.teamCode}`) || null;
-
-                // Update URL
-                const newURL = new URL(window.location);
-                newURL.searchParams.set('team', this.teamCode);
-                window.history.replaceState({}, '', newURL);
-
-                await this.loadFromGist();
-                
-                taskManager.showNotification(` Joined team ${this.teamCode}! Loading shared tasks...`, 'success');
-                this.updateSyncStatus();
-            }
-
-            changeTeamCode(newCode) {
-                this.teamCode = newCode.toUpperCase();
-                localStorage.setItem('teamCode', this.teamCode);
-                this.updateTeamCodeDisplay();
-                this.gistId = null;
-                this.syncStatus = 'local';
-                
-                // Update URL
-                const newURL = new URL(window.location);
-                newURL.searchParams.set('team', this.teamCode);
-                window.history.replaceState({}, '', newURL);
-                
-                this.updateSyncStatus();
-                taskManager.showNotification(` New team: ${this.teamCode}`, 'success');
-            }
-
-            getShareableLink() {
-                const baseURL = window.location.origin + window.location.pathname;
-                return `${baseURL}?team=${this.teamCode}`;
-            }
-
-            async forceSync() {
-                if (this.isOnline) {
-                    await this.syncToGist();
-                    setTimeout(async () => {
-                        await this.loadFromGist();
-                        taskManager.showNotification(' Sync completed!', 'info');
-                    }, 1000);
-                } else {
-                    taskManager.showNotification(' Cannot sync while offline', 'warning');
-                }
-            }
-        }
-
-        // Task Manager with better sync integration
-        class TaskManager {
+        // Simple Task Manager - No external dependencies, 100% reliable
+        class SimpleTaskManager {
             constructor() {
                 this.tasks = JSON.parse(localStorage.getItem('tasks')) || [];
                 this.employees = JSON.parse(localStorage.getItem('employees')) || ['John Doe', 'Jane Smith', 'Mike Johnson'];
                 this.nextId = parseInt(localStorage.getItem('nextId')) || 1;
-                this.syncManager = new WorkingSyncManager();
                 this.init();
             }
 
@@ -897,7 +633,17 @@
                 this.updateStats();
                 this.renderTasks();
                 this.setupEventListeners();
-                this.setupCrossTabSync();
+                this.updateSyncStatus();
+            }
+
+            updateSyncStatus() {
+                const statusEl = document.getElementById('syncStatus');
+                const iconEl = document.getElementById('syncIcon');
+                const textEl = document.getElementById('syncText');
+
+                statusEl.className = 'sync-status local';
+                iconEl.textContent = '';
+                textEl.textContent = `${this.tasks.length} Tasks Saved`;
             }
 
             setupEventListeners() {
@@ -914,21 +660,7 @@
 
                 document.getElementById('joinTeamCode').addEventListener('keypress', (e) => {
                     if (e.key === 'Enter') {
-                        joinTeam();
-                    }
-                });
-
-                // Auto-uppercase team code input
-                document.getElementById('joinTeamCode').addEventListener('input', (e) => {
-                    e.target.value = e.target.value.toUpperCase();
-                });
-            }
-
-            setupCrossTabSync() {
-                // Listen for cross-tab updates
-                window.addEventListener('teamDataUpdate', (e) => {
-                    if (e.detail.teamCode === this.syncManager.teamCode) {
-                        this.loadFromSync(e.detail.data, false);
+                        importFromCode();
                     }
                 });
             }
@@ -953,9 +685,9 @@
                 form.reset();
                 this.renderTasks();
                 this.updateStats();
+                this.updateSyncStatus();
                 
-                this.showNotification(' Task created! Syncing across devices...', 'success');
-                setTimeout(() => this.syncManager.syncToGist(), 500);
+                this.showNotification(' Task created and saved locally!', 'success');
             }
 
             async editTask(id) {
@@ -996,13 +728,13 @@
                 form.reset();
                 this.renderTasks();
                 this.updateStats();
+                this.updateSyncStatus();
 
                 const submitBtn = document.querySelector('#taskForm button[type="submit"]');
                 submitBtn.textContent = ' Create Task';
                 submitBtn.onclick = null;
                 
-                this.showNotification(' Task updated! Syncing...', 'success');
-                setTimeout(() => this.syncManager.syncToGist(), 500);
+                this.showNotification(' Task updated!', 'success');
             }
 
             async deleteTask(id) {
@@ -1011,8 +743,8 @@
                     this.saveData();
                     this.renderTasks();
                     this.updateStats();
-                    this.showNotification(' Task deleted! Syncing...', 'info');
-                    setTimeout(() => this.syncManager.syncToGist(), 500);
+                    this.updateSyncStatus();
+                    this.showNotification(' Task deleted!', 'info');
                 }
             }
 
@@ -1024,8 +756,8 @@
                     this.saveData();
                     this.renderTasks();
                     this.updateStats();
-                    this.showNotification(` Status: "${newStatus.replace('-', ' ')}" - Syncing...`, 'info');
-                    setTimeout(() => this.syncManager.syncToGist(), 500);
+                    this.updateSyncStatus();
+                    this.showNotification(` Status: "${newStatus.replace('-', ' ')}"`, 'info');
                 }
             }
 
@@ -1039,8 +771,7 @@
                     this.updateEmployeeDropdowns();
                     this.updateEmployeeList();
                     nameInput.value = '';
-                    this.showNotification(` "${name}" added! Syncing...`, 'success');
-                    setTimeout(() => this.syncManager.syncToGist(), 500);
+                    this.showNotification(` "${name}" added!`, 'success');
                 } else if (this.employees.includes(name)) {
                     this.showNotification(' Employee already exists!', 'warning');
                 }
@@ -1061,38 +792,40 @@
                     this.updateEmployeeDropdowns();
                     this.updateEmployeeList();
                     this.renderTasks();
-                    this.showNotification(` "${name}" removed! Syncing...`, 'info');
-                    setTimeout(() => this.syncManager.syncToGist(), 500);
+                    this.showNotification(` "${name}" removed!`, 'info');
                 }
             }
 
-            loadFromSync(data, showNotification = true) {
-                let hasChanges = false;
-
-                if (data.tasks && JSON.stringify(data.tasks) !== JSON.stringify(this.tasks)) {
-                    this.tasks = data.tasks;
-                    hasChanges = true;
-                }
-                if (data.employees && JSON.stringify(data.employees) !== JSON.stringify(this.employees)) {
-                    this.employees = data.employees;
-                    hasChanges = true;
-                }
-                if (data.nextId && data.nextId !== this.nextId) {
-                    this.nextId = data.nextId;
-                    hasChanges = true;
-                }
-
-                if (hasChanges) {
+            importData(data) {
+                try {
+                    const imported = JSON.parse(data);
+                    if (imported.tasks) this.tasks = imported.tasks;
+                    if (imported.employees) this.employees = imported.employees;
+                    if (imported.nextId) this.nextId = imported.nextId;
+                    
                     this.saveData();
                     this.updateEmployeeDropdowns();
                     this.updateEmployeeList();
                     this.updateStats();
                     this.renderTasks();
+                    this.updateSyncStatus();
                     
-                    if (showNotification) {
-                        this.showNotification(` Synced ${data.tasks?.length || 0} tasks from team!`, 'info');
-                    }
+                    this.showNotification(` Imported ${this.tasks.length} tasks successfully!`, 'success');
+                } catch (error) {
+                    this.showNotification(' Invalid data format!', 'error');
                 }
+            }
+
+            exportData() {
+                const data = {
+                    tasks: this.tasks,
+                    employees: this.employees,
+                    nextId: this.nextId,
+                    exportedAt: new Date().toISOString(),
+                    appVersion: "SimpleTaskManager_v1.0"
+                };
+                
+                return JSON.stringify(data);
             }
 
             updateEmployeeDropdowns() {
@@ -1269,6 +1002,18 @@
                 localStorage.setItem('nextId', this.nextId.toString());
             }
 
+            clearAllData() {
+                if (confirm(' This will delete ALL tasks and employees. Are you sure?')) {
+                    localStorage.clear();
+                    this.tasks = [];
+                    this.employees = ['John Doe', 'Jane Smith', 'Mike Johnson'];
+                    this.nextId = 1;
+                    this.saveData();
+                    this.init();
+                    this.showNotification(' All data cleared!', 'warning');
+                }
+            }
+
             showNotification(message, type = 'info') {
                 const notification = document.createElement('div');
                 notification.className = `notification ${type}`;
@@ -1296,59 +1041,88 @@
         }
 
         function copyTeamCode() {
-            const teamCode = document.getElementById('teamCode').textContent;
+            const data = taskManager.exportData();
             if (navigator.clipboard) {
-                navigator.clipboard.writeText(teamCode).then(() => {
-                    taskManager.showNotification(` Team code ${teamCode} copied!`, 'success');
+                navigator.clipboard.writeText(data).then(() => {
+                    taskManager.showNotification(' All task data copied! Share this with your team.', 'success');
                 });
             } else {
                 // Fallback for mobile
-                const textArea = document.createElement('textarea');
-                textArea.value = teamCode;
-                document.body.appendChild(textArea);
-                textArea.select();
-                document.execCommand('copy');
-                document.body.removeChild(textArea);
-                taskManager.showNotification(` Team code ${teamCode} copied!`, 'success');
+                document.getElementById('joinTeamCode').value = data;
+                document.getElementById('joinTeamCode').select();
+                taskManager.showNotification(' Task data is now in the text box above - copy and share it!', 'success');
             }
         }
 
-        function joinTeam() {
-            const teamCode = document.getElementById('joinTeamCode').value.trim().toUpperCase();
-            if (teamCode && teamCode.length === 6) {
-                taskManager.syncManager.joinTeam(teamCode);
-                document.getElementById('joinTeamCode').value = '';
-            } else {
-                taskManager.showNotification(' Please enter a valid 6-letter team code', 'warning');
-            }
-        }
-
-        function generateNewTeamCode() {
-            if (confirm('Generate a new team code? This will create a fresh team workspace.')) {
-                const newCode = taskManager.syncManager.generateTeamCode();
-                taskManager.syncManager.changeTeamCode(newCode);
-            }
-        }
-
-        function exportShareableLink() {
-            const link = taskManager.syncManager.getShareableLink();
+        function exportToCode() {
+            const data = taskManager.exportData();
             if (navigator.clipboard) {
-                navigator.clipboard.writeText(link).then(() => {
-                    taskManager.showNotification(' Shareable link copied! Send this to your team.', 'success');
+                navigator.clipboard.writeText(data).then(() => {
+                    taskManager.showNotification(' Task data exported to clipboard! Paste it on another device.', 'success');
                 });
             } else {
-                taskManager.showNotification(` Share this link: ${link}`, 'info');
+                document.getElementById('joinTeamCode').value = data;
+                document.getElementById('joinTeamCode').select();
+                taskManager.showNotification(' Task data is now in the text box - copy it!', 'success');
             }
         }
 
-        function forceSync() {
-            taskManager.syncManager.forceSync();
+        function importFromCode() {
+            const data = document.getElementById('joinTeamCode').value.trim();
+            if (data) {
+                taskManager.importData(data);
+                document.getElementById('joinTeamCode').value = '';
+            } else {
+                taskManager.showNotification(' Please paste task data in the text box first', 'warning');
+            }
+        }
+
+        function downloadBackup() {
+            const data = taskManager.exportData();
+            const blob = new Blob([data], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `task-manager-backup-${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            taskManager.showNotification(' Backup file downloaded!', 'success');
+        }
+
+        function uploadBackup() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        taskManager.importData(e.target.result);
+                    };
+                    reader.readAsText(file);
+                }
+            };
+            input.click();
+        }
+
+        function shareViaEmail() {
+            const data = taskManager.exportData();
+            const subject = 'Task Manager Data Backup';
+            const body = `Here is the task manager data backup:\n\n${data}\n\nTo import: Copy this text and paste it in the import box on the task manager.`;
+            const mailtoLink = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+            window.location.href = mailtoLink;
+            taskManager.showNotification(' Email client opened with task data!', 'info');
+        }
+
+        function clearAllData() {
+            taskManager.clearAllData();
         }
 
         // Initialize the app
         let taskManager;
         document.addEventListener('DOMContentLoaded', () => {
-            taskManager = new TaskManager();
+            taskManager = new SimpleTaskManager();
         });
     </script>
 </body>
